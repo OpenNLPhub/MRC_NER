@@ -1,11 +1,22 @@
+'''
+ * @author Waldinsamkeit
+ * @email Zenglz_pro@163.com
+ * @create date 2020-08-24 23:05:58
+ * @desc 
+'''
+
 import os
 import sys
+cwd=os.getcwd()
+sys.path.append(os.path.join(cwd,'src'))
+
 import random
 from collections import Counter
 from tqdm import tqdm
 import operator
 import config.args as args
 from utils.common import overrides
+import json
 def line2char(line):
     '''
     :param line: 原始行 字:label
@@ -43,7 +54,7 @@ def produce_data_flat_ner():
     train,dev集需要自己划分
     '''
     print('process raw training data')
-    with open(os.path.join(args.RAW_SOURCE_DATA,'train_data')) as f:
+    with open(os.path.join(args.RAW_SOURCE_DATA,'train_data'),'r') as f:
         sent_list,tags_list=[],[]
         sent,tags=[],[]
         for line in tqdm(f.readlines()):
@@ -61,8 +72,8 @@ def produce_data_flat_ner():
     写入文件格式
     李 华 爱 北 京\t B-PER I-PER O B-LOC I-LOC\n
     '''
-    with open(os.path.join(args.FLAT_SOURCE_DATA,'dev_data.txt')) as dev_txt,\
-        open(os.path.join(args.FLAT_SOURCE_DATA,'train_data.txt')) as train_txt:
+    with open(os.path.join(args.FLAT_SOURCE_DATA,'dev_data.txt'),'w') as dev_txt,\
+        open(os.path.join(args.FLAT_SOURCE_DATA,'train_data.txt'),'w') as train_txt:
         print('write train data')
         for sent,tags in tqdm(train):
             ans=' '.join(sent)+'\t'+' '.join(tags)+'\n'
@@ -73,7 +84,7 @@ def produce_data_flat_ner():
             dev_txt.write(ans)
             
 
-    with open(os.path.join(args.RAW_SOURCE_DATA,'test_data')) as f:
+    with open(os.path.join(args.RAW_SOURCE_DATA,'test_data'),'r') as f:
         sent_list,tags_list=[],[]
         sent,tags=[],[]
         for line in tqdm(f.readlines()):
@@ -86,7 +97,7 @@ def produce_data_flat_ner():
                 sent.append(char)
                 tags.append(tag)
     
-    with open(os.path.join(args.FLAT_SOURCE_DATA,'test_data.txt')) as test_txt:
+    with open(os.path.join(args.FLAT_SOURCE_DATA,'test_data.txt'),'w') as test_txt:
         print('write test data')
         for sent,tags in tqdm(zip(sent_list,tags_list)):
             ans=' '.join(sent)+'\t'+' '.join(tags)+'\n'
@@ -114,7 +125,7 @@ def produce_data_mrc():
     train,dev集需要自己划分
     '''
     print('process raw training data')
-    with open(os.path.join(args.RAW_SOURCE_DATA,'train_data')) as f:
+    with open(os.path.join(args.RAW_SOURCE_DATA,'train_data'),'r') as f:
         sent_list,tags_list=[],[]
         sent,tags=[],[]
         for line in tqdm(f.readlines()):
@@ -128,7 +139,7 @@ def produce_data_mrc():
                 tags.append(tag)
     dev,train=train_dev_split(sent_list,tags_list)
 
-    with open(os.path.join(args.RAW_SOURCE_DATA,'test_data')) as f:
+    with open(os.path.join(args.RAW_SOURCE_DATA,'test_data'),'r') as f:
         sent_list,tags_list=[],[]
         sent,tags=[],[]
         for line in tqdm(f.readlines()):
@@ -146,9 +157,9 @@ def produce_data_mrc():
     labels.remove('O')
     
     for label in labels:
-        with open(os.path.join(args.MRC_SOURCE_DATA,label+'_train.txt')) as train_txt,\
-            open(os.path.join(args.MRC_SOURCE_DATA,label+'_dev.txt')) as dev_txt,\
-            open(os.path.join(args.MRC_SOURCE_DATA,label+'_test.txt')) as test_txt:
+        with open(os.path.join(args.MRC_SOURCE_DATA,label+'_train.txt'),'w') as train_txt,\
+            open(os.path.join(args.MRC_SOURCE_DATA,label+'_dev.txt'),'w') as dev_txt,\
+            open(os.path.join(args.MRC_SOURCE_DATA,label+'_test.txt'),'w') as test_txt:
 
             _write_mrc_data(label,train,train_txt,'train')
             _write_mrc_data(label,dev,dev_txt,'dev')
@@ -205,27 +216,37 @@ class DataProcessor(object):
 class FlatDataProcessor(DataProcessor):
     '''
     构成Inputunit 模式
+    FlatDataProcessor 可以读取数据
+    - data_dir
+    |- train.txt
+    |- dev.txt
+    |- 
+    其中train.txt dev.txt 皆为
+    李 华 在 北 京\t B-PER I-PER O B-LOC I-LOC
     '''
+    train='train.txt'
+    dev='dev.txt'
     def __init__(self):
         super(FlatDataProcessor,self).__init__()
     
     @overrides
     def get_train_units(self,data_dir):
-        path=os.path.join(data_dir,'train.txt')
+        path=os.path.join(data_dir,FlatDataProcessor.train)
         pairs=self._read_line(path)
         return self._create_unit(pairs,"train")
     
     @overrides
     def get_dev_units(self,data_dir):
-        path=os.path.join(data_dir,'dev.txt')
+        path=os.path.join(data_dir,FlatDataProcessor.dev)
         pairs=self._read_line(path)
         return self._create_unit(pairs,"dev")
     
     @overrides
-    def get_labels(self):
+    def get_labels(self,data_dir):
         return args.LABELS
         
-    def _create_unit(self,pairs,set_type):
+    def _create_unit(self,pairs,set_type,label_text=None):
+        #与MRC接口相同
         units=[]
         #sent_list=['李','华','在','北','京']
         for i, (sent,tags) in enumerate(pairs):
@@ -236,21 +257,81 @@ class FlatDataProcessor(DataProcessor):
             units.append(unit)
         return units
 
+
 class MRCDataProcessor(DataProcessor):
+    '''
+    构成Inputunit 模式
+    FlatDataProcessor 可以读取数据
+    - data_dir
+    |- {label}_train.txt
+    |- {label}_dev.txt
+    |- description.json
+
+    其中PER_train.txt PER_dev.txt 皆为
+    李 华 在 北 京\t B I O O O
+    
+    其中description.json 
+    {
+        'PER':'找到人名',
+        'LOC':'找到地名'
+    }
+    '''
+    MRC_desc='description.json'
+    MRC_train='_train.txt'
+    MRC_dev='_dev.txt'
     def __init__(self):
         super(MRCDataProcessor,self).__init__()
-    
+
     @overrides
     def get_train_units(self,data_dir):
-        pass
+        units=[]
+        with open(os.path.join(data_dir),MRCDataProcessor.MRC_desc) as f:
+            label2desc=json.loads(f.read())
+        labels=label2desc.keys()
+        for label in labels:
+            path=os.path.join(data_dir,label+MRCDataProcessor.MRC_train)
+            pairs=self._read_line(path)
+            label_text=label2desc[label]
+            units+=self._create_unit(pairs,'train',label_text)
+        return units
     
     @overrides
     def get_dev_units(self,data_dir):
-        pass
+        units=[]
+        with open(os.path.join(data_dir),MRCDataProcessor.MRC_desc) as f:
+            label2desc=json.loads(f.read())
+        labels=label2desc.keys()
+        for label in labels:
+            path=os.path.join(data_dir,label+MRCDataProcessor.MRC_dev)
+            pairs=self._read_line(path)
+            label_text=label2desc[label]
+            units+=self._create_unit(pairs,'dev',label_text)
+        return units
     
     @overrides
-    def get_labels(self):
-        return args.MRC_LABEL
+    def get_labels(self,data_dir):
+        pass
 
-                
+    def _create_unit(self,pairs,set_type,label_text):
+        #label_path label description txt
+        units=[]
+        #sent_list=['李','华','在','北','京']
+        for i, (sent,tags) in enumerate(pairs):
+            guid="{}-{}".format(set_type,str(i))
+            text_b=''.join(sent)
+            text_a=label_text
+            assert len(tags)==len(text_a)
+            unit=InputUnit(guid=guid,text_a=text_a,text_b=text_b,label=tags)
+            units.append(unit)
+        return units
+        
+        
+        
+
+if __name__=='__main__':
+    import sys
+    cwd=os.getcwd()
+    sys.path.append(os.path.join(cwd,'src'))
+    produce_data_flat_ner()
+    produce_data_mrc()               
                 

@@ -9,3 +9,4 @@ MRC_SOURCE_DATA=join(cwd,'data','mrc')
 
 MRC_LABEL=['LOC','PER','ORG','O']
 LABELS=['B-LOC','I-LOC','B-PER','I-LOC','B-ORG','I-ORG','O']
+
