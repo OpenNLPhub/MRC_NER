@@ -250,7 +250,7 @@ class MRCDataProcessor(DataProcessor):
     
     @overrides
     def get_labels(self):
-        return agrs.MRC_LABEL
+        return args.MRC_LABEL
 
                 
                 
