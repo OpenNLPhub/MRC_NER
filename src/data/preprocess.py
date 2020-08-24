@@ -201,6 +201,7 @@ class DataProcessor(object):
             return zip(sent_list,tags_list)
 
 
+
 class FlatDataProcessor(DataProcessor):
     '''
     构成Inputunit 模式
@@ -210,11 +211,15 @@ class FlatDataProcessor(DataProcessor):
     
     @overrides
     def get_train_units(self,data_dir):
-        pass
+        path=os.path.join(data_dir,'train.txt')
+        pairs=self._read_line(path)
+        return self._create_unit(pairs,"train")
     
     @overrides
     def get_dev_units(self,data_dir):
-        pass
+        path=os.path.join(data_dir,'dev.txt')
+        pairs=self._read_line(path)
+        return self._create_unit(pairs,"dev")
     
     @overrides
     def get_labels(self):
@@ -230,7 +235,22 @@ class FlatDataProcessor(DataProcessor):
             unit=InputUnit(guid=guid,text_a=text_a,text_b=None,label=tags)
             units.append(unit)
         return units
-            
+
+class MRCDataProcessor(DataProcessor):
+    def __init__(self):
+        super(MRCDataProcessor,self).__init__()
+    
+    @overrides
+    def get_train_units(self,data_dir):
+        pass
+    
+    @overrides
+    def get_dev_units(self,data_dir):
+        pass
+    
+    @overrides
+    def get_labels(self):
+        return agrs.MRC_LABEL
 
                 
                 
