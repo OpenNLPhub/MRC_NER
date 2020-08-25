@@ -48,6 +48,43 @@ def train_dev_split(x, y, shuffle=True, valid_size=0.2 ,random_state=2020):
 
     return dev,train
 
+def build_vocab(min_freq=1,stop_word_list=None):
+    """
+    建立词典
+    :param min_freq: 最小词频限制
+    :param stop_list: 停用词 @type：file_path
+    :return: vocab
+    """
+    count=Counter()
+
+    with open(os.path.join(args.RAW_SOURCE_DATA,'train_data'),'r') as f:
+        print('Building vocab')
+        for line in tqdm(f.readlines()):
+            t=line2char(line)
+            if len(t)==0:continue
+            word,label=t
+            count.update(word)
+    if stop_word_list:
+        stop_list={}
+        with open(args.STOP_WORD_LIST,'r') as f:
+            for i,line in enumerate(f):
+                word=line.strip('\n')
+                if stop_list.get(word) is None:
+                    stop_list[word]=i
+        count={k:v for k,v in count.items() if k not in stop_list}
+
+    count=sorted(count.items(),key=operator.itemgetter(1))
+    vocab=[w[0] for w in count if w[1]>=min_freq]
+
+    vocab=args.FLAG_WORDS+vocab
+
+    assert vocab[0]=='[PAD]'
+
+    with open(args.VOCAB_FILE,'w') as f:
+        for w in vocab:
+            f.write(w+'\n')
+        
+
 
 def produce_data_flat_ner():
     '''
@@ -187,7 +224,7 @@ class InputUnit(object):
         """创建一个输入实例
         Args:
             guid: 每个example拥有唯一的id
-            text_a: 第一个句子的原始文本，一般对于文本分类来说，只需要text_a
+            text_a: 第一个句子的原始文本，一般对于文本分类来说，只需要text_a lists [str_1,str2]
             text_b: 第二个句子的原始文本，在句子对的任务中才有，分类问题中为None
             label: example对应的标签，对于训练集和验证集应非None，测试集为None
         """
@@ -212,7 +249,13 @@ class DataProcessor(object):
         读取验证集
         '''
         raise NotImplementedError()
-    
+
+    def get_test_units(self,data_dir):
+        '''
+        读取测试集
+        '''
+        raise NotImplementedError()
+
     def get_labels(self):
         raise NotImplementedError()
     
@@ -224,9 +267,8 @@ class DataProcessor(object):
                 sent,tags=line.strip('\n').split('\t')
                 sent_list.append(sent.split(' '))
                 tags_list.append(tags.split(' '))
-            return zip(sent_list,tags_list)
-
-
+            return (sent_list,tags_list)
+    
 
 class FlatDataProcessor(DataProcessor):
     '''
@@ -239,38 +281,44 @@ class FlatDataProcessor(DataProcessor):
     其中train.txt dev.txt 皆为
     李 华 在 北 京\t B-PER I-PER O B-LOC I-LOC
     '''
+
     train='train.txt'
     dev='dev.txt'
+    test='test.txt'
     def __init__(self):
         super(FlatDataProcessor,self).__init__()
     
-    @overrides
+    @overrides(DataProcessor)
     def get_train_units(self,data_dir):
         path=os.path.join(data_dir,FlatDataProcessor.train)
         pairs=self._read_line(path)
         return self._create_unit(pairs,"train")
     
-    @overrides
+    @overrides(DataProcessor)
     def get_dev_units(self,data_dir):
         path=os.path.join(data_dir,FlatDataProcessor.dev)
         pairs=self._read_line(path)
         return self._create_unit(pairs,"dev")
     
-    @overrides
+    @overrides(DataProcessor)
+    def get_test_units(self, data_dir):
+        path=os.path.join(data_dir,FlatDataProcessor.test)
+        pairs=self._read_line(path)
+        return self._create_unit(pairs,"test")
+
+    @overrides(DataProcessor)
     def get_labels(self,data_dir):
         return args.LABELS
-        
-    def _create_unit(self,pairs,set_type,label_text=None):
+    
+    def _create_unit(self,pairs,set_type,label_text=None,label=None):
         #与MRC接口相同
-        units=[]
         #sent_list=['李','华','在','北','京']
-        for i, (sent,tags) in enumerate(pairs):
-            guid="{}-{}".format(set_type,str(i))
-            text_a=''.join(sent)
-            assert len(tags)==len(text_a)
-            unit=InputUnit(guid=guid,text_a=text_a,text_b=None,label=tags)
-            units.append(unit)
-        return units
+        sent_list,tags_list=pairs
+        sent_list=[ ''.join(i) for i in sent_list]
+        t= self.__class__.__name__ if label==None else label
+        guid="{}-{}".format(set_type,t)
+        unit=InputUnit(guid=guid,text_a=sent_list,label=tags_list)
+        return unit
 
 
 class MRCDataProcessor(DataProcessor):
@@ -290,14 +338,16 @@ class MRCDataProcessor(DataProcessor):
         'PER':'找到人名',
         'LOC':'找到地名'
     }
+
     '''
     MRC_desc='description.json'
     MRC_train='_train.txt'
     MRC_dev='_dev.txt'
+    MRC_test='_test.txt'
     def __init__(self):
         super(MRCDataProcessor,self).__init__()
 
-    @overrides
+    @overrides(DataProcessor)
     def get_train_units(self,data_dir):
         units=[]
         with open(os.path.join(data_dir),MRCDataProcessor.MRC_desc) as f:
@@ -310,7 +360,7 @@ class MRCDataProcessor(DataProcessor):
             units+=self._create_unit(pairs,'train',label_text)
         return units
     
-    @overrides
+    @overrides(DataProcessor)
     def get_dev_units(self,data_dir):
         units=[]
         with open(os.path.join(data_dir),MRCDataProcessor.MRC_desc) as f:
@@ -323,30 +373,65 @@ class MRCDataProcessor(DataProcessor):
             units+=self._create_unit(pairs,'dev',label_text)
         return units
     
-    @overrides
-    def get_labels(self,data_dir):
-        pass
-
-    def _create_unit(self,pairs,set_type,label_text):
-        #label_path label description txt
+    @overrides(DataProcessor)
+    def get_test_units(self, data_dir):
         units=[]
-        #sent_list=['李','华','在','北','京']
-        for i, (sent,tags) in enumerate(pairs):
-            guid="{}-{}".format(set_type,str(i))
-            text_b=''.join(sent)
-            text_a=label_text
-            assert len(tags)==len(text_a)
-            unit=InputUnit(guid=guid,text_a=text_a,text_b=text_b,label=tags)
-            units.append(unit)
+        with open(os.path.join(data_dir),MRCDataProcessor.MRC_desc) as f:
+            label2desc=json.loads(f.read())
+        labels=label2desc.keys()
+        for label in labels:
+            path=os.path.join(data_dir,label+MRCDataProcessor.MRC_test)
+            pairs=self._read_line(path)
+            label_text=label2desc[label]
+            units+=self._create_unit(pairs,'test',label_text)
         return units
+    
+    
+    @overrides(DataProcessor)
+    def get_labels(self,data_dir):
+        with open(os.path.join(data_dir),MRCDataProcessor.MRC_desc) as f:
+            label2desc=json.loads(f.read())
+        return list(label2desc.keys())
+
+    def _create_unit(self,pairs,set_type,label_text=None,label=None):
+        #label_path label description txt
+        #sent_list=['李','华','在','北','京']
+        sent_list,tags_list=pairs
+        sent_list=[ ''.join(i) for i in sent_list]
+        t= self.__class__.__name__ if label==None else label
+        guid="{}-{}".format(set_type,t)
+        text_b=[label_text for i in range(len(sent_list))]
+        unit=InputUnit(guid=guid,text_b=text_b,label=tags_list,text_a=sent_list)
+        return unit
         
-        
-        
+
+
+def convert_units_to_features(unit,label_list,tokenizer):
+    '''
+    这里tokenizer 全部使用 BertTokenizer
+    '''
+    label_map={label:i for i,label in enumerate(args.FLAG_WORDS+label_list)}
+    text_a=unit.text_a
+    text_b=unit.text_b
+    tags_list=unit.label
+    inputs=tokenizer(text_a,text_b,padding=True)
+    #inputs ={input_ids,attention_mask,token_type_ids}
+    
+    tag_id_list=[]
+    # batch_size * seq_len     其中seq_len 不是一个定值
+    for i,l in enumerate(tags_list):
+        t=[]
+        for j,tag in enumerate(l):
+            t.append(tag)
+        tag_id_list.append(t)
+    
+    #tag_id_list 逻辑上应该flat之后在进行 loss计算，这里因为考虑到分批的操作，没有将他变成tensor
+    
+    return inputs,tag_id_list
+
 
 if __name__=='__main__':
-    import sys
-    cwd=os.getcwd()
-    sys.path.append(os.path.join(cwd,'src'))
+    build_vocab()
     produce_data_flat_ner()
     produce_data_mrc()               
                 

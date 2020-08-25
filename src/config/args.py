@@ -9,4 +9,10 @@ MRC_SOURCE_DATA=join(cwd,'data','mrc')
 
 MRC_LABEL=['LOC','PER','ORG','O']
 LABELS=['B-LOC','I-LOC','B-PER','I-LOC','B-ORG','I-ORG','O']
+MRC_TAG=['B','I','O']
 
+STOP_WORD_LIST=None
+
+
+FLAG_WORDS = ["[PAD]", "[CLS]", "[SEP]", "[UNK]"]
+VOCAB_FILE=join(RAW_SOURCE_DATA,'vocab.txt')
