@@ -59,10 +59,12 @@ def produce_data_flat_ner():
         sent,tags=[],[]
         for line in tqdm(f.readlines()):
             t=line2char(line)
-            if len(t)!=0:
+            if len(t)==0:
                 sent_list.append(sent)
                 tags_list.append(tags)
             else:
+                # import pdb
+                # pdb.set_trace()
                 char,tag=t
                 sent.append(char)
                 tags.append(tag)
