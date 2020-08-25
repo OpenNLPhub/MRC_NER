@@ -7,15 +7,15 @@
 
 import os
 import sys
-cwd=os.getcwd()
-sys.path.append(os.path.join(cwd,'src'))
+# cwd=os.getcwd()
+# sys.path.append(os.path.join(cwd,'src'))
 
 import random
 from collections import Counter
 from tqdm import tqdm
 import operator
-import config.args as args
-from utils.common import overrides
+import src.config.args as args
+from src.utils.common import overrides
 import json
 def line2char(line):
     '''
@@ -62,6 +62,8 @@ def produce_data_flat_ner():
             if len(t)==0:
                 sent_list.append(sent)
                 tags_list.append(tags)
+                sent=[]
+                tags=[]
             else:
                 # import pdb
                 # pdb.set_trace()
@@ -69,7 +71,8 @@ def produce_data_flat_ner():
                 sent.append(char)
                 tags.append(tag)
     dev,train=train_dev_split(sent_list,tags_list)
-    
+    # import pdb
+    # pdb.set_trace()
     '''
     写入文件格式
     李 华 爱 北 京\t B-PER I-PER O B-LOC I-LOC\n
@@ -91,9 +94,11 @@ def produce_data_flat_ner():
         sent,tags=[],[]
         for line in tqdm(f.readlines()):
             t=line2char(line)
-            if len(t)!=0:
+            if len(t)==0:
                 sent_list.append(sent)
                 tags_list.append(tags)
+                sent=[]
+                tags=[]
             else:
                 char,tag=t
                 sent.append(char)
@@ -113,6 +118,8 @@ def _write_mrc_data(label,data,file,prefix):
     for sent,tags in tqdm(data):
         sent_str=' '.join(sent)
         tran_tags=['O' if tag.find(label)==-1 else tag.split('-')[0] for tag in tags]
+        #丢弃无实体的data item
+        if len(set(tran_tags))==1 and tran_tags[0]=='O': continue
         tags_str=' '.join(tran_tags)
         ans_str=sent_str+'\t'+tags_str+'\n'
         file.write(ans_str)
@@ -132,32 +139,38 @@ def produce_data_mrc():
         sent,tags=[],[]
         for line in tqdm(f.readlines()):
             t=line2char(line)
-            if len(t)!=0:
+            if len(t)==0:
                 sent_list.append(sent)
                 tags_list.append(tags)
+                sent=[]
+                tags=[]
             else:
                 char,tag=t
                 sent.append(char)
                 tags.append(tag)
     dev,train=train_dev_split(sent_list,tags_list)
 
+
     with open(os.path.join(args.RAW_SOURCE_DATA,'test_data'),'r') as f:
         sent_list,tags_list=[],[]
         sent,tags=[],[]
         for line in tqdm(f.readlines()):
             t=line2char(line)
-            if len(t)!=0:
+            if len(t)==0:
                 sent_list.append(sent)
                 tags_list.append(tags)
+                sent=[]
+                tags=[]
             else:
                 char,tag=t
                 sent.append(char)
                 tags.append(tag)
-    test=zip(sent_list,tags_list)
+    test=list(zip(sent_list,tags_list))
 
     labels=args.MRC_LABEL
     labels.remove('O')
-    
+    # import pdb
+    # pdb.set_trace()
     for label in labels:
         with open(os.path.join(args.MRC_SOURCE_DATA,label+'_train.txt'),'w') as train_txt,\
             open(os.path.join(args.MRC_SOURCE_DATA,label+'_dev.txt'),'w') as dev_txt,\
