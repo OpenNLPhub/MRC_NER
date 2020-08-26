@@ -6,7 +6,7 @@ import src.config.ModelConfig as ModelConfig
 import torch.nn.functional as F
 from src.utils.common import flatten_lists
 class MRCBert(nn.Module):
-    def __init__(self,vocab_size,emb_size,hidden_size,num_labels,use_pretrained=True):
+    def __init__(self,num_labels,vocab_size=0,emb_size=0,hidden_size=0,use_pretrained=True):
         super(MRCBert,self).__init__()
         if use_pretrained:
             self.vocab_size=0
@@ -20,6 +20,7 @@ class MRCBert(nn.Module):
             self.hidden_size=hidden_size
             self.bertconfig=BertConfig(vocab_size=self.vocab_size,hidden_size=self.hidden_size,\
                 num_labels=num_labels,author='lingze')
+            self.bert=BertModel(config=self.bertconfig)
         self.ll=nn.Linear(self.hidden_size,num_labels)
     
     def forward(self,input_ids,attention_mask,token_type_ids,berttokenizer):
@@ -57,6 +58,7 @@ class MRCBert(nn.Module):
         score=self.forward(input_ids=input_ids,attention_mask=attention_mask,\
             token_type_ids=token_type_ids,berttokenizer=berttokenizer)
         #score [flatten_size, num_labels] 可以通过attention_mask,token_type_ids将其还原
+        
         return score
 
 
