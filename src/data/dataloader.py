@@ -34,8 +34,15 @@ class MRCBertDataSet(Dataset):
 class FlatBertDataSet(Dataset):
     pass
 
+def create_Bert_tokenizer(use_pretrained=True):
+    if use_pretrained:
+        Tokenizer=BertTokenizer.from_pretrained(ModelConfig.BERT_BASE_CHINESE)
+    else:
+        Tokenizer=BertTokenizer(args.VOCAB_FILE)
+    
+    return Tokenizer
 
-def create_MRC_DataLoader(mode,data_dir,use_pretrained=True):
+def create_MRC_DataLoader(mode,data_dir,Tokenizer):
     assert mode in ['train','dev','test']
     processor=MRCDataProcessor()
     if mode =='train':
@@ -44,11 +51,6 @@ def create_MRC_DataLoader(mode,data_dir,use_pretrained=True):
         units=processor.get_dev_units(data_dir)
     else:
         units=processor.get_test_units(data_dir)
-    
-    if use_pretrained:
-        Tokenizer=BertTokenizer.from_pretrained(ModelConfig.BERT_BASE_CHINESE)
-    else:
-        Tokenizer=BertTokenizer(args.VOCAB_FILE)
     
     inputs,tags=convert_units_to_features(units,args.MRC_TAG,Tokenizer)
 
