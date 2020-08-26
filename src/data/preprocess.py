@@ -7,8 +7,6 @@
 
 import os
 import sys
-# cwd=os.getcwd()
-# sys.path.append(os.path.join(cwd,'src'))
 
 import random
 from collections import Counter
@@ -290,21 +288,24 @@ class FlatDataProcessor(DataProcessor):
     
     @overrides(DataProcessor)
     def get_train_units(self,data_dir):
+        units=[]
         path=os.path.join(data_dir,FlatDataProcessor.train)
         pairs=self._read_line(path)
-        return self._create_unit(pairs,"train")
+        return units.append(self._create_unit(pairs,"train"))
     
     @overrides(DataProcessor)
     def get_dev_units(self,data_dir):
+        units=[]
         path=os.path.join(data_dir,FlatDataProcessor.dev)
         pairs=self._read_line(path)
-        return self._create_unit(pairs,"dev")
+        return units.append(self._create_unit(pairs,"dev"))
     
     @overrides(DataProcessor)
     def get_test_units(self, data_dir):
+        units=[]
         path=os.path.join(data_dir,FlatDataProcessor.test)
         pairs=self._read_line(path)
-        return self._create_unit(pairs,"test")
+        return units.append(self._create_unit(pairs,"test"))
 
     @overrides(DataProcessor)
     def get_labels(self,data_dir):
@@ -350,40 +351,40 @@ class MRCDataProcessor(DataProcessor):
     @overrides(DataProcessor)
     def get_train_units(self,data_dir):
         units=[]
-        with open(os.path.join(data_dir),MRCDataProcessor.MRC_desc) as f:
+        with open(os.path.join(data_dir,MRCDataProcessor.MRC_desc),'r',encoding='utf-8') as f:
             label2desc=json.loads(f.read())
         labels=label2desc.keys()
         for label in labels:
             path=os.path.join(data_dir,label+MRCDataProcessor.MRC_train)
             pairs=self._read_line(path)
             label_text=label2desc[label]
-            units+=self._create_unit(pairs,'train',label_text)
+            units.append(self._create_unit(pairs,'train',label_text))
         return units
     
     @overrides(DataProcessor)
     def get_dev_units(self,data_dir):
         units=[]
-        with open(os.path.join(data_dir),MRCDataProcessor.MRC_desc) as f:
+        with open(os.path.join(data_dir,MRCDataProcessor.MRC_desc),'r',encoding='utf-8') as f:
             label2desc=json.loads(f.read())
         labels=label2desc.keys()
         for label in labels:
             path=os.path.join(data_dir,label+MRCDataProcessor.MRC_dev)
             pairs=self._read_line(path)
             label_text=label2desc[label]
-            units+=self._create_unit(pairs,'dev',label_text)
+            units.append(self._create_unit(pairs,'dev',label_text))
         return units
     
     @overrides(DataProcessor)
     def get_test_units(self, data_dir):
         units=[]
-        with open(os.path.join(data_dir),MRCDataProcessor.MRC_desc) as f:
+        with open(os.path.join(data_dir,MRCDataProcessor.MRC_desc),'r',encoding='utf-8') as f:
             label2desc=json.loads(f.read())
         labels=label2desc.keys()
         for label in labels:
             path=os.path.join(data_dir,label+MRCDataProcessor.MRC_test)
             pairs=self._read_line(path)
             label_text=label2desc[label]
-            units+=self._create_unit(pairs,'test',label_text)
+            units.append(self._create_unit(pairs,'test',label_text))
         return units
     
     
@@ -406,14 +407,19 @@ class MRCDataProcessor(DataProcessor):
         
 
 
-def convert_units_to_features(unit,label_list,tokenizer):
+def convert_units_to_features(units,label_list,tokenizer):
     '''
     这里tokenizer 全部使用 BertTokenizer
     '''
-    label_map={label:i for i,label in enumerate(args.FLAG_WORDS+label_list)}
-    text_a=unit.text_a
-    text_b=unit.text_b
-    tags_list=unit.label
+    label_map={label:i for i,label in enumerate(label_list)}
+    text_a=[]
+    text_b=[]
+    tags_list=[]
+    for unit in units:
+        text_a.extend(unit.text_a)
+        text_b.extend(unit.text_b)
+        tags_list.extend(unit.label)
+    assert len(text_a)==len(text_b)
     inputs=tokenizer(text_a,text_b,padding=True)
     #inputs ={input_ids,attention_mask,token_type_ids}
     
@@ -431,7 +437,8 @@ def convert_units_to_features(unit,label_list,tokenizer):
 
 
 if __name__=='__main__':
-    build_vocab()
-    produce_data_flat_ner()
-    produce_data_mrc()               
-                
+    # build_vocab()
+    # produce_data_flat_ner()
+    # produce_data_mrc()               
+    import sys
+    print(sys.path)
