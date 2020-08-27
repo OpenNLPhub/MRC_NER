@@ -45,7 +45,7 @@ def create_Bert_tokenizer(use_pretrained=True):
     
     return Tokenizer
 
-def create_MRC_DataLoader(mode,data_dir,Tokenizer):
+def create_MRC_DataLoader(mode,data_dir,tokenizer):
     assert mode in ['train','dev','test']
     processor=MRCDataProcessor()
     if mode =='train':
@@ -57,7 +57,7 @@ def create_MRC_DataLoader(mode,data_dir,Tokenizer):
     
     # import pdb;pdb.set_trace()
 
-    inputs,tags=convert_units_to_features(units,args.MRC_TAG,Tokenizer)
+    inputs,tags=convert_units_to_features(units,args.MRC_TAG,tokenizer)
 
     MRC_DataSet=MRCBertDataSet(inputs,tags)
 
@@ -76,8 +76,9 @@ if __name__=='__main__':
     data_dir=args.MRC_SOURCE_DATA
     tokenizer=create_Bert_tokenizer()
     trainLoader=create_MRC_DataLoader('train',data_dir,tokenizer)
-    for data in trainLoader:
-        # import pdb
-        # pdb.set_trace()
-        inputs_ids,attention_mask,token_type_ids,tag_list=data
+    print('test finish')
+    # for data in trainLoader:
+    #     # import pdb
+    #     # pdb.set_trace()
+    #     inputs_ids,attention_mask,token_type_ids,tag_list=data
         

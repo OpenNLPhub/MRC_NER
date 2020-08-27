@@ -10,4 +10,5 @@ BERT_BASE_CHINESE=join(cwd,'data','static','bert-base-chinese')
 class BertConfig():
     hidden_size=0
     emb_size=0
+    vocab_size=0
     

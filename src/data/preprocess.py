@@ -175,12 +175,17 @@ def produce_data_mrc():
         for line in tqdm(f.readlines()):
             t=line2char(line)
             if len(t)==0:
+                assert len(sent) ==len(tags)
                 sent_list.append(sent)
                 tags_list.append(tags)
                 sent=[]
                 tags=[]
             else:
                 char,tag=t
+                # 这里做了一个简单的映射，如果空格作为一个打了tag的词要输入，我们将其映射为 -
+                # 因为在BertTokenizer 中 空格被认为是一个分隔符，不会对空格打标签，会造成，tag和data 不对齐
+                if char ==' ':
+                    char='-'
                 sent.append(char)
                 tags.append(tag)
     dev,train=train_dev_split(sent_list,tags_list)
@@ -192,14 +197,18 @@ def produce_data_mrc():
         for line in tqdm(f.readlines()):
             t=line2char(line)
             if len(t)==0:
+                assert len(sent) ==len(tags)
                 sent_list.append(sent)
                 tags_list.append(tags)
                 sent=[]
                 tags=[]
             else:
                 char,tag=t
+                if char ==' ':
+                    char='-'
                 sent.append(char)
                 tags.append(tag)
+            
     test=list(zip(sent_list,tags_list))
 
     labels=args.MRC_LABEL
@@ -265,6 +274,7 @@ class DataProcessor(object):
                 sent,tags=line.strip('\n').split('\t')
                 sent_list.append(sent.split(' '))
                 tags_list.append(tags.split(' '))
+                assert len(sent_list)==len(tags_list)
             return (sent_list,tags_list)
     
 
@@ -315,7 +325,8 @@ class FlatDataProcessor(DataProcessor):
         #与MRC接口相同
         #sent_list=['李','华','在','北','京']
         sent_list,tags_list=pairs
-        sent_list=[ ''.join(i) for i in sent_list]
+        sent_list=[' '.join(i) for i in sent_list]
+        # 这里用 空格 进行 分词预处理
         t= self.__class__.__name__ if label==None else label
         guid="{}-{}".format(set_type,t)
         unit=InputUnit(guid=guid,text_a=sent_list,label=tags_list)
@@ -398,7 +409,8 @@ class MRCDataProcessor(DataProcessor):
         #label_path label description txt
         #sent_list=['李','华','在','北','京']
         sent_list,tags_list=pairs
-        sent_list=[ ''.join(i) for i in sent_list]
+        sent_list=[' '.join(i) for i in sent_list]
+        # 这里用 空格 进行 分词预处理
         t= self.__class__.__name__ if label==None else label
         guid="{}-{}".format(set_type,t)
         text_b=[label_text for i in range(len(sent_list))]
@@ -415,14 +427,32 @@ def convert_units_to_features(units,label_list,tokenizer):
     text_a=[]
     text_b=[]
     tags_list=[]
+    # import pdb;pdb.set_trace()
     for unit in units:
         text_a.extend(unit.text_a)
         text_b.extend(unit.text_b)
         tags_list.extend(unit.label)
     assert len(text_a)==len(text_b)
+    
+    #这里 我们不能用tokenizer 直接生成 input ，在bert tokenizer中 “中国IBM” 会被分为 “中”，“国“，”IBM"
+    #但是在数据集中应该是 “中”，“国“，”I“，“B”，”M"。这回造成tag和label不匹配
     inputs=tokenizer(text_a,text_b,padding=True)
     #inputs ={input_ids,attention_mask,token_type_ids}
     
+    '''
+    Debug
+
+    for i,value in enumerate(text_a):
+        inputs=tokenizer(value)
+        input_ids=inputs['input_ids']
+        if len(input_ids)-2!=len(tags_list[i]):
+            print(value)
+            print(input_ids)
+            print(tags_list[i])
+            import pdb;pdb.set_trace()
+    '''
+    
+    # len_list=[ for i in enumerate(zip)]
     tag_id_list=[]
     # batch_size * seq_len     其中seq_len 不是一个定值
     for i,l in enumerate(tags_list):
@@ -430,7 +460,7 @@ def convert_units_to_features(units,label_list,tokenizer):
         for j,tag in enumerate(l):
             t.append(label_map.get(tag))
         tag_id_list.append(t)
-    
+    # import pdb;pdb.set_trace()
     #tag_id_list 逻辑上应该flat之后在进行 loss计算，这里因为考虑到分批的操作，没有将他变成tensor
     
     return inputs,tag_id_list
@@ -439,6 +469,4 @@ def convert_units_to_features(units,label_list,tokenizer):
 if __name__=='__main__':
     # build_vocab()
     # produce_data_flat_ner()
-    # produce_data_mrc()               
-    import sys
-    print(sys.path)
+    produce_data_mrc()               

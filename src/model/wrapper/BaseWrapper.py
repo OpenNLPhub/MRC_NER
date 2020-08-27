@@ -26,6 +26,7 @@ class BaseWrapper(object):
             losses=0.
             self.model.train()
             for data in train_data_loader:
+                self.step+=1
                 losses=self._step_train(data,**kwargs)
                 if self.step % self.print_step==0:
                     total_step=train_data_loader.dataset.__len__()//self.batch_size +1
