@@ -428,7 +428,7 @@ def convert_units_to_features(units,label_list,tokenizer):
     for i,l in enumerate(tags_list):
         t=[]
         for j,tag in enumerate(l):
-            t.append(tag)
+            t.append(label_map.get(tag))
         tag_id_list.append(t)
     
     #tag_id_list 逻辑上应该flat之后在进行 loss计算，这里因为考虑到分批的操作，没有将他变成tensor
