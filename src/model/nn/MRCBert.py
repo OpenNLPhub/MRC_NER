@@ -22,6 +22,7 @@ class MRCBert(nn.Module):
             self.bertconfig=BertConfig(vocab_size=self.vocab_size,hidden_size=self.hidden_size,\
                 num_labels=num_labels,author='lingze')
             self.bert=BertModel(config=self.bertconfig)
+        self.dropout=nn.Dropout(self.bertconfig.hidden_dropout_prob)
         self.ll=nn.Linear(self.hidden_size,num_labels)
     
     def forward(self,input_ids,attention_mask,token_type_ids,berttokenizer):
@@ -42,7 +43,7 @@ class MRCBert(nn.Module):
 
         mask=mask.unsqueeze(2).expand(-1,-1,self.hidden_size)
         hidden_score=hidden_score.masked_select(mask).reshape(-1,self.hidden_size)
-
+        hidden_score=self.dropout(hidden_score)
         #加入Linear层
         return self.ll(hidden_score)
 
