@@ -32,7 +32,7 @@ class BaseWrapper(object):
                     total_step=train_data_loader.dataset.__len__()//self.batch_size +1
                     print("Epoch {}, step/total_step: {}/{} Average Loss for one batch:{:.4f}".format(e,self.step,total_step,losses/self.print_step))
                     losses=0.
-
+    
             val_loss=self.validate(dev_data_loader,**kwargs)
             print("Epoch {}, Val Loss:{:.4f}".format(e,val_loss))
                 

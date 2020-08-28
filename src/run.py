@@ -2,7 +2,7 @@
 from src.data.dataloader import create_MRC_DataLoader,create_Bert_tokenizer
 from src.model.wrapper.MRCBert_NER import MRCBert_NER
 import src.config.args as args
-
+from src.metrics.metrics import convert_units_to_dataframe
 def run_Bert_MRC_NER():
     tokenizer=create_Bert_tokenizer(True)
     train_data_loader=create_MRC_DataLoader('train',args.MRC_SOURCE_DATA,tokenizer)
@@ -12,3 +12,7 @@ def run_Bert_MRC_NER():
     model=MRCBert_NER(len(labels),True)
     model.train(train_data_loader,dev_data_loader,tokenizer=tokenizer)
     # model=MRCBert_NER()
+    test_data_loader=create_MRC_DataLoader('test',args.MRC_SOURCE_DATA,tokenizer)
+    units=model.test(test_data_loader,tokenizer=tokenizer,label_class=args.MRC_TAG)
+    df=convert_units_to_dataframe(units)
+    
