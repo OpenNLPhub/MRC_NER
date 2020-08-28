@@ -1,4 +1,5 @@
 
+import pickle
 def overrides(interface_class):
     def overrider(method):
         assert(method.__name__ in dir(interface_class))
@@ -16,4 +17,19 @@ def flatten_lists(lists):
             ans.append(l)
     return ans;
 
-    
+
+'''
+储存和加载模型
+'''
+def save_model(model,file_name):
+    """Save the model"""
+    with open(file_name,"wb") as f:
+        pickle.dump(model,f)
+
+
+def load_model(file_name):
+    """Load the model"""
+    with open(file_name,"rb") as f:
+        model=pickle.load(f)
+    return model
+

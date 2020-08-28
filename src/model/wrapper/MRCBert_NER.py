@@ -7,6 +7,8 @@ from src.model.nn.MRCBert import MRCBert
 from src.config.ModelConfig import BertConfig
 from src.utils.common import overrides,flatten_lists
 from src.metrics.metrics import Eval_Unit,confusion_matrix_to_units
+from src.config.TrainingConfig import BertMRCTrainingConfig
+
 class MRCBert_NER(BaseWrapper):
     def __init__(self,num_labels,use_pretrained=True):
         super(MRCBert_NER,self).__init__()
@@ -20,6 +22,9 @@ class MRCBert_NER(BaseWrapper):
         '''
         可重写自定义 训练参数
         '''
+        self.lr=BertMRCTrainingConfig.lr
+        self.epoches=BertMRCTrainingConfig.epoches
+        self.batch_size=BertMRCTrainingConfig.batch_size
         self.optimizer=optim.Adam(self.model.parameters(),lr=self.lr)
     
 
@@ -35,13 +40,18 @@ class MRCBert_NER(BaseWrapper):
     @overrides(BaseWrapper)
     def _cal_loss(self,batch_data,**kwargs):
         tokenizer=kwargs.get('tokenizer',None)
-        if tokenizer==None:
-            raise ValueError('Need Tokenizer!')
+        labels=kwargs.get('label_class',None)
+        labels2id={i:j for j,i in enumerate(labels)}
+        if tokenizer==None or labels==None:
+            raise ValueError('Need tokenizer and label_class')
         input_ids,attention_mask,token_type_ids,tags=self.__trans_data2tensor(batch_data)
         score=self.model(input_ids=input_ids,attention_mask=attention_mask,token_type_ids=token_type_ids,\
             berttokenizer=tokenizer)
+        # 将 'O' 的weight降低
+        weight_ce=torch.ones(len(labels)).to(self.device)
+        weight_ce[labels2id.get('O')]=0.05
         # import pdb; pdb.set_trace()
-        loss=self.model.cal_loss(score,tags)
+        loss=self.model.cal_loss(score,tags,weight_ce)
         return loss
 
     
@@ -53,19 +63,19 @@ class MRCBert_NER(BaseWrapper):
         labels=kwargs.get('label_class',None)
         if tokenizer==None or labels==None:
             raise ValueError('Need tokenizer and label_class')
-        self.model.eval()
-        ids2labels={(i,label)for i,label in enumerate(labels)}
+        self.best_model.eval()
+        ids2labels={(i,label) for i,label in enumerate(labels)}
         ans=None
         total_step=test_data_loader.dataset.__len__()//self.batch_size +1
         
         with torch.no_grad():
             for step,batch_data in enumerate(test_data_loader):
                 input_ids,attention_mask,token_type_ids,tags=self.__trans_data2tensor(batch_data)
-                pred=self.model.predict(input_ids=input_ids,attention_mask=attention_mask,\
+                pred=self.best_model.predict(input_ids=input_ids,attention_mask=attention_mask,\
                     token_type_ids=token_type_ids,berttokenizer=tokenizer)
                 
                 units=confusion_matrix_to_units(pred,tags,ids2labels)
-                ans=[ i+j for i,j in zip(ans,units)] if ans!=None else units
+                ans=[i+j for i,j in zip(ans,units)] if ans!=None else units
                 if step % 10 ==0:
                     print('step/total_step:{}/{}'.format(step,total_step))
                     for unit in ans:

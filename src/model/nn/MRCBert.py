@@ -48,9 +48,9 @@ class MRCBert(nn.Module):
 
     
     #labels [batch_size,seq_len] 不加padding
-    def cal_loss(self,score,labels):
+    def cal_loss(self,score,labels,weight):
         flatten_labels=flatten_lists(labels)
-        return F.cross_entropy(score,labels)
+        return F.cross_entropy(score,labels,weight=weight)
     
 
     def predict(self,input_ids,attention_mask,token_type_ids,berttokenizer):

@@ -30,13 +30,12 @@ class BaseWrapper(object):
                 losses=self._step_train(data,**kwargs)
                 if self.step % self.print_step==0:
                     total_step=train_data_loader.dataset.__len__()//self.batch_size +1
-                    print("Epoch {}, step/total_step: {}/{} Average Loss for one batch:{:.4f}".format(e,self.step,total_step,losses/self.print_step))
+                    print("Epoch {}, step/total_step: {}/{} Average Loss for one batch:{:.4f}".format(e+1,self.step,total_step,losses/self.print_step))
                     losses=0.
     
             val_loss=self.validate(dev_data_loader,**kwargs)
-            print("Epoch {}, Val Loss:{:.4f}".format(e,val_loss))
+            print("Validation:\t Epoch {}, Val Loss:{:.4f}".format(e+1,val_loss))
                 
-    
     def validate(self,dev_data_loader,**kwargs):
         self.model.eval()
         with torch.no_grad():
@@ -53,7 +52,7 @@ class BaseWrapper(object):
             print('Upgrade Model and Save Model')
             self.best_model=deepcopy(self.model)
             self._best_val_loss=val_loss
-        return val_loss
+        return val_loss/self.batch_size
 
     def _step_train(self,batch_data,**kwargs):
         loss=self._cal_loss(batch_data,**kwargs)
