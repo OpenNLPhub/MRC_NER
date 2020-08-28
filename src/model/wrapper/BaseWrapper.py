@@ -32,7 +32,12 @@ class BaseWrapper(object):
                     total_step=train_data_loader.dataset.__len__()//self.batch_size +1
                     print("Epoch {}, step/total_step: {}/{} Average Loss for one batch:{:.4f}".format(e+1,self.step,total_step,losses/self.print_step))
                     losses=0.
-    
+            
+            #增加这个判定，是为了在第一个Validation中best_model没有初始化，回报错
+            #理论上来说，在训练了一个epoch之后，如果模型进行了学习，best_model肯定会进行更新
+            if e==0:
+                self.best_model=self.model
+            
             val_loss=self.validate(dev_data_loader,**kwargs)
             print("Validation:\t Epoch {}, Val Loss:{:.4f}".format(e+1,val_loss))
                 
@@ -58,7 +63,7 @@ class BaseWrapper(object):
         if val_loss < self._best_val_loss:
             self.best_model=deepcopy(self.model)
             self._best_val_loss=val_loss
-            
+
             print('Upgrade Model and Save Model')
             print('-'*15+'In validation dataset, metrices'+'-'*15)
             #打印每个多分类中每一个分类的评价指标
