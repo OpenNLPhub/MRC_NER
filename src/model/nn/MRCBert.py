@@ -59,7 +59,7 @@ class MRCBert(nn.Module):
         score=self.forward(input_ids=input_ids,attention_mask=attention_mask,\
             token_type_ids=token_type_ids,berttokenizer=berttokenizer)
         #score [flatten_size, num_labels] 可以通过attention_mask,token_type_ids将其还原
-        labels=torch.argmax(score,dim=0)
+        labels=torch.argmax(score,dim=1)
         #labels [flatten_size]
         return labels
 
