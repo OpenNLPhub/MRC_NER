@@ -54,9 +54,7 @@ class MRCBert_NER(BaseWrapper):
         loss=self.model.cal_loss(score,tags,weight_ce)
         return loss
 
-    
-    #该method 只用于评测模型的效果，不评测在特定任务下的效果
-    #返回一个自定义的unit list
+    '''
     @overrides(BaseWrapper)
     def test(self,test_data_loader,**kwargs):
         tokenizer=kwargs.get('tokenizer',None)
@@ -67,7 +65,6 @@ class MRCBert_NER(BaseWrapper):
         ids2labels={i:label for i,label in enumerate(labels)}
         ans=None
         total_step=test_data_loader.dataset.__len__()//self.batch_size +1
-        
         with torch.no_grad():
             for step,batch_data in enumerate(test_data_loader):
                 input_ids,attention_mask,token_type_ids,tags=self.__trans_data2tensor(batch_data)
@@ -81,7 +78,22 @@ class MRCBert_NER(BaseWrapper):
                     for unit in ans:
                         unit.ptr()
         return ans
-                
+    '''
+
+    @overrides(BaseWrapper)
+    def _eval_unit(self,batch_data,**kwargs):
+        tokenizer=kwargs.get('tokenizer',None)
+        labels=kwargs.get('label_class',None)
+        if tokenizer==None or labels==None:
+            raise ValueError('Need tokenizer and label_class')
+        ids2labels={i:label for i,label in enumerate(labels)}
+        
+        input_ids,attention_mask,token_type_ids,tags=self.__trans_data2tensor(batch_data)
+        pred=self.best_model.predict(input_ids=input_ids,attention_mask=attention_mask,\
+            token_type_ids=token_type_ids,berttokenizer=tokenizer)
+        units=confusion_matrix_to_units(pred,tags,ids2labels)
+        return units
+       
         
                 
 

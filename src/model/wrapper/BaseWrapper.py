@@ -41,17 +41,32 @@ class BaseWrapper(object):
         with torch.no_grad():
             val_losses=0.
             val_step=0
+            ans=None
             for data in dev_data_loader:
                 val_step+=1
                 loss=self._cal_loss(data,**kwargs)
                 loss=loss.item()
-                #return的 loss 不需要backward() 取了item
                 val_losses+=loss
+                #return的 loss 不需要backward() 取了item
+        
+                #计算eval unit
+                units=self._eval_unit(data,**kwargs)
+                ans=[i+j for i,j in zip(ans,units)] if ans!=None else units
+                
         val_loss=val_losses/val_step
+        #当模型在Validation Dataset上损失下降后，更新best_model 同时打印评价指标
         if val_loss < self._best_val_loss:
-            print('Upgrade Model and Save Model')
             self.best_model=deepcopy(self.model)
             self._best_val_loss=val_loss
+            
+            print('Upgrade Model and Save Model')
+            print('-'*15+'In validation dataset, metrices'+'-'*15)
+            #打印每个多分类中每一个分类的评价指标
+            for unit in ans:
+                unit.ptr()
+            print('-'*61)
+
+            
         return val_loss/self.batch_size
 
     def _step_train(self,batch_data,**kwargs):
@@ -61,13 +76,28 @@ class BaseWrapper(object):
         self.optimizer.step()
         return loss.item()
 
+    #该method 只用于评测模型的效果，不评测在特定任务下的效果
+    #返回一个自定义的unit list
+    def test(self,test_data_loader,**kwargs):
+        self.best_model.eval()
+        total_step=test_data_loader.dataset.__len__()//self.batch_size+1
+        ans=None
+        with torch.no_grad():
+            for step,batch_data in enumerate(test_data_loader):
+                units=self._eval_unit(batch_data,**kwargs)
+                ans=[i+j for i,j in zip(ans,units)] if ans!=None else units
+                if step % self.print_step==0:
+                    print('-'*15+'Step 112'+'-'*15);print('-'*60)
+                    print('step/total_step:{}/{}'.format(step,total_step))
+                    for unit in ans:
+                        unit.ptr()
+        return ans
+
     def _cal_loss(self,batch_data,**kwargs):
         raise NotImplementedError()
 
-    def test(self,test_data_loader,**kwargs):
+    def _eval_unit(self,batch_data,**kwargs):
         raise NotImplementedError()
-
-    
 
     
 
