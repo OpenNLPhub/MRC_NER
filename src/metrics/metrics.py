@@ -28,8 +28,9 @@ class Eval_Unit(object):
         return {"acc":self.accuracy,"prec":self.precision,"recall":self.recall,"f1_score":self.f1_score}
     
     def ptr(self):
-        print("Label ids: {} \t accuracy:{} \t precision:{} \t recall:{} "\
-            .format(self.id,self.accuracy,self.precision,self.recall))
+        print("Label ids: {} \t accuracy:{} \t precision:{} \t recall:{} \t f1-score:{}"\
+            .format(self.id,self.accuracy,self.precision,self.recall,self.f1_score))
+
     @classmethod
     def cal_accuracy(cls,tp:int,fp:int,fn:int,tn:int)->float:
         return float(tp+tn)/(tp+tn+fp+fn)
@@ -62,8 +63,8 @@ def confusion_matrix_to_units(pred,tag,ids2labels):
     FN=matrix.sum(axis=0)-TP
     TN=matrix.sum()-TP-FN-FP
     units=[]
-    for i,cla in enumerate(classes):
-        units.append(Eval_Unit(TP[i],FP[i],FN[i],TN[i],ids2labels.get(cla)))
+    for i,cla in ids2labels.items():
+        units.append(Eval_Unit(TP[i],FP[i],FN[i],TN[i],cla))
     return units
 
 
@@ -99,3 +100,15 @@ def _evaluate_multiclass(units:list,type:str):
     f1=2*P*R/(P+R)
 
     return {"prec":P,"recall":R,"f1_score":f1}
+
+if __name__=='__main__':
+    import numpy as np
+    import torch
+    import src.config.args as args
+    labels=args.MRC_TAG
+    ids2labels={i:label for i,label in enumerate(labels)}
+    pred=np.array([1,2,0,2,1,0,0,2,1,1,0,1,0])
+    tag= np.array([1,2,0,0,0,2,1,0,2,1,0,2,1])
+    units=confusion_matrix_to_units(pred,tag,ids2labels)
+    for unit in units:
+        unit.ptr()

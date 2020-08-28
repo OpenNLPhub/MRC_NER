@@ -6,6 +6,6 @@ class TrainingConfig():
     print_step=15
 
 class BertMRCTrainingConfig(TrainingConfig):
-    batch_size=32
-    lr=1e-6
-    epoches=5
+    batch_size=512
+    lr=1e-5
+    epoches=1
