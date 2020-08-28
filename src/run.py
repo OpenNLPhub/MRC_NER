@@ -24,7 +24,6 @@ def run_Bert_MRC_NER():
         model=MRCBert_NER(len(labels),True)
         model.train(train_data_loader,dev_data_loader,tokenizer=tokenizer,label_class=labels)
         save_model(model,args.MRC_MODEL_PATH)
-        # model=MRCBert_NER()
     else:
         model=load_model(args.MRC_MODEL_PATH)
     test_data_loader=create_MRC_DataLoader('test',args.MRC_SOURCE_DATA,tokenizer)

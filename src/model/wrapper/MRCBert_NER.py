@@ -64,7 +64,7 @@ class MRCBert_NER(BaseWrapper):
         if tokenizer==None or labels==None:
             raise ValueError('Need tokenizer and label_class')
         self.best_model.eval()
-        ids2labels={(i,label) for i,label in enumerate(labels)}
+        ids2labels={i:label for i,label in enumerate(labels)}
         ans=None
         total_step=test_data_loader.dataset.__len__()//self.batch_size +1
         
