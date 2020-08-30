@@ -91,7 +91,8 @@ class MRCBert_NER(BaseWrapper):
         input_ids,attention_mask,token_type_ids,tags=self.__trans_data2tensor(batch_data)
         pred=self.best_model.predict(input_ids=input_ids,attention_mask=attention_mask,\
             token_type_ids=token_type_ids,berttokenizer=tokenizer)
-        units=confusion_matrix_to_units(pred,tags,ids2labels)
+        #如果在cuda上运算，要将cuda上的结果转化到cpu上才能用sklearn计算混淆矩阵
+        units=confusion_matrix_to_units(pred.cpu(),tags.cpu(),ids2labels)
         return units
        
         
