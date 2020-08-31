@@ -8,4 +8,4 @@ class TrainingConfig():
 class BertMRCTrainingConfig(TrainingConfig):
     batch_size=64
     lr=1e-5
-    epoches=10
+    epoches=5
