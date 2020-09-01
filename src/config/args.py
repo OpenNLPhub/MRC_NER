@@ -17,6 +17,8 @@ STOP_WORD_LIST=None
 FLAG_WORDS = ["[PAD]", "[CLS]", "[SEP]", "[UNK]"]
 VOCAB_FILE=join(RAW_SOURCE_DATA,'vocab.txt')
 
+
+HBT_SOURCE_DATA=join(cwd,'data','WebNLG','triple')
 ''' ----  model parameter path ----'''
 
 MRC_MODEL_PATH=join(cwd,'data','model','mrc.pkl')
