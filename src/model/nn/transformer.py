@@ -17,6 +17,36 @@ import copy
 import numpy as np
 import math
 
+def make_model(src_vocab,tag_vocab,N=6,d_model=512,d_ff=2058,h=8,dropout=0.1):
+    '''
+    Implementation to get Transformer
+    Params:
+        src_vocab source data vocabulary list's size
+        tag_vocab : target data vocabulary list's size
+        N: encoderlayer in Encoder
+        d_model: word embedding size
+        d_ff: full connected layer size
+        h: the num of multiheadedAttention Layer's head
+        dropout: dropout probability
+    '''
+    c=copy.deepcopy
+    # it is important to deepcopy the module and diliver it into the function
+    attn= MultiHeadedAttention(h,d_model,dropout=dropout)
+    ff=PositionwiseFeedForward(d_model,d_ff,dropout=dropout)
+    position=PositionalEncoding(d_model,dropout=dropout)
+    encoder=Encoder(EncoderLayer(d_model,c(attn),c(ff),dropout),N=N)
+    decoder=Decoder(DecoderLayer(d_model,c(attn),c(attn),c(ff),dropout=dropout),N=N)
+    src_embed=nn.Sequential(Embeddings(d_model,src_vocab),c(position))
+    tgt_embed=nn.Sequential(Embeddings(d_model,tag_vocab),c(position))
+    model=EncoderDecoder(encoder,decoder,src_embed,tgt_embed,Generator(d_model,tag_vocab))
+
+    #Initialize parameters with Glorot
+    for p in model.parameters():
+        if p.dim()>1:
+            nn.init.xavier_uniform(p)
+            
+    return model
+
 '''
 Encoder-Decoder Abstract Model
 '''
@@ -312,8 +342,55 @@ class MultiHeadedAttention(nn.Module):
         return self.linears[-1](x)
 
 
+'''
+Feed-Forward Networks
+'''
+
+class PositionwiseFeedForward(nn.Module):
+
+    def __init__(self,d_model,d_ff,dropout=0.1):
+        self.w_1=nn.Linear(d_model,d_ff)
+        self.w_2=nn.Linear(d_ff,d_model)
+        self.dropout=nn.Dropout(dropout)
+    
+    def forward(self,x):
+        return self.w_2(self.dropout(F.relu(self.w_1(x))))
+
+'''
+Embedding
+'''
+
+class Embeddings(nn.Module):
+    def __init__(self,d_model,vocab):
+        super(Embeddings,self).__init__()
+        self.lut=nn.Embedding(vocab,d_model)
+        self.d_model=d_model
+    
+    def forward(self,x):
+        return self.lut(x)*math.sqrt(self.d_model)
 
 
+class PositionalEncoding(nn.Module):
+    "Implement the PE function."
+    def __init__(self, d_model, dropout, max_len=5000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+        
+        # Compute the positional encodings once in log space.
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) *
+                             -(math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
+        
+   
+    def forward(self, x):
+        p=self.pe[:,:x.size(1)].requires_grad=False
+        x = x + p
+        return self.dropout(x)
 
 
     
