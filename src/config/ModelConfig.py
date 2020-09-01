@@ -11,4 +11,11 @@ class BertConfig():
     hidden_size=0
     emb_size=0
     vocab_size=0
-    
+
+
+class TransformerConfig():
+    d_model=512
+    d_ff=2048
+    h=8
+    dropout=0.1
+    N=6
