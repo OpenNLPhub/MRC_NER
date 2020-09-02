@@ -4,8 +4,12 @@ cwd=os.getcwd()
 ''' Path config'''
 
 BERT_BASE_CHINESE=join(cwd,'data','static','bert-base-chinese')
+BERT_BASE_ENGLISH=join(cwd,'data','static','bert-base-uncased')
 
-
+Bert_Pretrained_Model_Map = {
+    'bert-base-uncased': BERT_BASE_ENGLISH,
+    'bert-base-chinese': BERT_BASE_CHINESE
+}
 #可以在这里设定自己定义的BertConfig
 class BertConfig():
     hidden_size=0
