@@ -15,7 +15,7 @@ from src.utils.common import save_model,load_model
 def run_Bert_MRC_NER():
 
     model_is_existed=os.path.exists(args.MRC_MODEL_PATH)
-    tokenizer=create_Bert_tokenizer(True)
+    tokenizer=create_Bert_tokenizer(True,model='bert-base-chinese')
     labels=args.MRC_TAG
     if not model_is_existed:
         train_data_loader=create_MRC_DataLoader('train',args.MRC_SOURCE_DATA,tokenizer)
