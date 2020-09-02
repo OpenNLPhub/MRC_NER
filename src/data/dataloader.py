@@ -4,15 +4,36 @@
  * @create date 2020-08-25 17:49:20
  * @desc 
 '''
+import os
 import torch
 from torch.utils.data import Dataset,DataLoader,RandomSampler,SequentialSampler
-from src.data.preprocess import MRCDataProcessor,FlatDataProcessor,convert_units_to_features
+from src.data.preprocess import MRCDataProcessor,FlatDataProcessor,HBTDataProcesser
 import src.config.args as args
 import src.config.ModelConfig as ModelConfig
 from src.config.TrainingConfig import BertMRCTrainingConfig
 from src.utils.common import overrides,flatten_lists
 from transformers import BertTokenizer,BertConfig
 
+
+
+def create_Bert_tokenizer(use_pretrained=True,**kwargs):
+    if use_pretrained:
+        if 'model' not in kwargs:
+            raise ValueError("Need type to sign the pretrained model")
+        Path=ModelConfig.Bert_Pretrained_Model_Map.get(kwargs['model'],None)
+        tokenizer_path=os.path.join(Path,'vocab.txt')
+        if Path==None:
+            raise ValueError("Need choice model again")
+        Tokenizer=BertTokenizer(tokenizer_path)
+    else:
+        if 'vocab_file' not in kwargs:
+            raise ValueError("Please input vocab file path")
+        path=kwargs.get('vocab_file')
+        Tokenizer=BertTokenizer(path)
+    
+    return Tokenizer
+
+'''--------------------MRC DataSet--------------------- '''
 class MRCBertDataSet(Dataset):
     def __init__(self,inputs,tags_lists):
         super(MRCBertDataSet,self).__init__()
@@ -37,13 +58,8 @@ def MRC_collate_fn(batch):
 class FlatBertDataSet(Dataset):
     pass
 
-def create_Bert_tokenizer(use_pretrained=True):
-    if use_pretrained:
-        Tokenizer=BertTokenizer.from_pretrained(ModelConfig.BERT_BASE_CHINESE)
-    else:
-        Tokenizer=BertTokenizer(args.VOCAB_FILE)
-    
-    return Tokenizer
+
+
 
 def create_MRC_DataLoader(mode,data_dir,tokenizer):
     assert mode in ['train','dev','test']
@@ -57,7 +73,7 @@ def create_MRC_DataLoader(mode,data_dir,tokenizer):
     
     # import pdb;pdb.set_trace()
 
-    inputs,tags=convert_units_to_features(units,args.MRC_TAG,tokenizer)
+    inputs,tags=processor.convert_units_to_features(units,args.MRC_TAG,tokenizer)
 
     MRC_DataSet=MRCBertDataSet(inputs,tags)
 
@@ -70,6 +86,32 @@ def create_Flat_DataLoader(mode,data_dir,use_pretrained=True):
     pass
     
 
+
+
+'''--------------HBT-----------------'''
+
+class HBTDataSet(Dataset):
+    def __init__(self):
+        pass
+
+    def __getitem__(self,index):
+        pass
+
+    def __len__(self):
+        return 0
+
+
+def create_HBT_DataLoader(mode,data_dir,tokenizer):
+    assert mode in ['train','dev','test']
+    processor=HBTDataProcesser()
+    if mode=='train':
+        text,triple_list=processor.get_train_units(data_dir)
+    elif mode=='dev':
+        text,triple_list=processor.get_dev_units(data_dir)
+    else:
+        text,triple_list=processor.get_test_units(data_dir)
+
+    
 
     
 if __name__=='__main__':

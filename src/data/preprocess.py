@@ -263,8 +263,9 @@ class DataProcessor(object):
         '''
         raise NotImplementedError()
 
-    def get_labels(self):
+    def get_labels(self,data_dir):
         raise NotImplementedError()
+    
     
     @classmethod
     def _read_line(cls,input_file):
@@ -285,7 +286,7 @@ class FlatDataProcessor(DataProcessor):
     - data_dir
     |- train.txt
     |- dev.txt
-    |- 
+    |- test.txt
     其中train.txt dev.txt 皆为
     李 华 在 北 京\t B-PER I-PER O B-LOC I-LOC
     '''
@@ -416,54 +417,125 @@ class MRCDataProcessor(DataProcessor):
         text_b=[label_text for i in range(len(sent_list))]
         unit=InputUnit(guid=guid,text_b=text_b,label=tags_list,text_a=sent_list)
         return unit
+    
+    @classmethod
+    def convert_units_to_features(cls,units,label_list,tokenizer):
+        '''
+        这里tokenizer 全部使用 BertTokenizer
+        '''
+        label_map={label:i for i,label in enumerate(label_list)}
+        text_a=[]
+        text_b=[]
+        tags_list=[]
+        # import pdb;pdb.set_trace()
+        for unit in units:
+            text_a.extend(unit.text_a)
+            text_b.extend(unit.text_b)
+            tags_list.extend(unit.label)
+        assert len(text_a)==len(text_b)
         
+        #这里 我们不能用tokenizer 直接生成 input ，在bert tokenizer中 “中国IBM” 会被分为 “中”，“国“，”IBM"
+        #但是在数据集中应该是 “中”，“国“，”I“，“B”，”M"。这回造成tag和label不匹配
+        inputs=tokenizer(text_a,text_b,padding=True)
+        #inputs ={input_ids,attention_mask,token_type_ids}
+        
+        '''
+        Debug
+
+        for i,value in enumerate(text_a):
+            inputs=tokenizer(value)
+            input_ids=inputs['input_ids']
+            if len(input_ids)-2!=len(tags_list[i]):
+                print(value)
+                print(input_ids)
+                print(tags_list[i])
+                import pdb;pdb.set_trace()
+        '''
+        
+        # len_list=[ for i in enumerate(zip)]
+        tag_id_list=[]
+        # batch_size * seq_len     其中seq_len 不是一个定值
+        for i,l in enumerate(tags_list):
+            t=[]
+            for j,tag in enumerate(l):
+                t.append(label_map.get(tag))
+            tag_id_list.append(t)
+        # import pdb;pdb.set_trace()
+        #tag_id_list 逻辑上应该flat之后在进行 loss计算，这里因为考虑到分批的操作，没有将他变成tensor
+        
+        return inputs,tag_id_list
 
 
-def convert_units_to_features(units,label_list,tokenizer):
-    '''
-    这里tokenizer 全部使用 BertTokenizer
-    '''
-    label_map={label:i for i,label in enumerate(label_list)}
-    text_a=[]
-    text_b=[]
-    tags_list=[]
-    # import pdb;pdb.set_trace()
-    for unit in units:
-        text_a.extend(unit.text_a)
-        text_b.extend(unit.text_b)
-        tags_list.extend(unit.label)
-    assert len(text_a)==len(text_b)
-    
-    #这里 我们不能用tokenizer 直接生成 input ，在bert tokenizer中 “中国IBM” 会被分为 “中”，“国“，”IBM"
-    #但是在数据集中应该是 “中”，“国“，”I“，“B”，”M"。这回造成tag和label不匹配
-    inputs=tokenizer(text_a,text_b,padding=True)
-    #inputs ={input_ids,attention_mask,token_type_ids}
-    
-    '''
-    Debug
 
-    for i,value in enumerate(text_a):
-        inputs=tokenizer(value)
-        input_ids=inputs['input_ids']
-        if len(input_ids)-2!=len(tags_list[i]):
-            print(value)
-            print(input_ids)
-            print(tags_list[i])
-            import pdb;pdb.set_trace()
+class HBTDataProcesser(DataProcessor):
     '''
+    HBT数据下的目录结构
+    - data_dir
+    |- train.json
+    |- dev.json
+    |- test.json
+    |- relation
+    '''
+    train='train.json'
+    dev='dev.json'
+    test='test.json'
+    label='relation_type.txt'
+
+    @overrides(DataProcessor)
+    def get_dev_units(self, data_dir):
+        path = os.path.join(data_dir,HBTDataProcesser.dev)
+        return self.__read_line__(path)
     
-    # len_list=[ for i in enumerate(zip)]
-    tag_id_list=[]
-    # batch_size * seq_len     其中seq_len 不是一个定值
-    for i,l in enumerate(tags_list):
-        t=[]
-        for j,tag in enumerate(l):
-            t.append(label_map.get(tag))
-        tag_id_list.append(t)
-    # import pdb;pdb.set_trace()
-    #tag_id_list 逻辑上应该flat之后在进行 loss计算，这里因为考虑到分批的操作，没有将他变成tensor
+    @overrides(DataProcessor)
+    def get_test_units(self, data_dir):
+        path = os.path.join(data_dir,HBTDataProcesser.test)
+        return self.__read_line__(path)
     
-    return inputs,tag_id_list
+    @overrides(DataProcessor)
+    def get_train_units(self, data_dir):
+        path = os.path.join(data_dir,HBTDataProcesser.train)
+        return self.__read_line__(path)
+    
+    @overrides(DataProcessor)
+    def get_labels(self,data_dir):
+        relation_list=[]
+        with open ( os.path.join(data_dir,HBTDataProcesser.label),'r') as f:
+             for line in f.readlines():
+                 relation_list.append(line.strip())
+        return relation_list
+
+    def __read_line__(self,input_file):
+        batch_text=[]
+        batch_triple_list=[]
+        with open(input_file,'r') as f:
+            data=json.loads(f)
+            for d in data:
+                text = d['text']
+                triple_list = d['triple_list']
+                text = ' '.join(text.split())
+                sub2triple={}
+                for triple in triple_list:
+                    s,r,o = triple
+                    if s not in sub2triple:
+                        sub2triple['s'] = [ ]
+                    sub2triple['s'].append((s,r,o))
+                
+                #keep only one subject in one sentence
+                s = random.choice(list(sub2triple.keys()))
+                triple_list = sub2triple.get(s)
+
+                batch_text.append(text)
+                batch_triple_list.append(triple_list)
+        assert len(batch_text) == len(batch_triple_list)
+        return batch_text,batch_triple_list
+    
+    @classmethod
+    def convert_units_to_features(cls,text,triples,relation_list,tokenizer):
+        rel2id={ rel:i for i,rel in relation_list}
+        inputs=tokenizer(text,padding=True)
+    
+
+
 
 
 if __name__=='__main__':
