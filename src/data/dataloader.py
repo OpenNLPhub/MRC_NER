@@ -10,7 +10,7 @@ from torch.utils.data import Dataset,DataLoader,RandomSampler,SequentialSampler
 from src.data.preprocess import MRCDataProcessor,FlatDataProcessor,HBTDataProcesser
 import src.config.args as args
 import src.config.ModelConfig as ModelConfig
-from src.config.TrainingConfig import BertMRCTrainingConfig
+from src.config.TrainingConfig import BertMRCTrainingConfig,HBTTrainingConfig
 from src.utils.common import overrides,flatten_lists
 from transformers import BertTokenizer,BertConfig
 
@@ -55,6 +55,9 @@ def MRC_collate_fn(batch):
     input_ids,attention_mask,token_type_ids,tags_lists=zip(*batch)
     return input_ids,attention_mask,token_type_ids,tags_lists
 
+def collate_fn(batch):
+    return zip(*batch)
+
 class FlatBertDataSet(Dataset):
     pass
 
@@ -91,36 +94,54 @@ def create_Flat_DataLoader(mode,data_dir,use_pretrained=True):
 '''--------------HBT-----------------'''
 
 class HBTDataSet(Dataset):
-    def __init__(self):
-        pass
+    def __init__(self,**kwargs):
+        self.input_idx=kwargs['input_idx']
+        self.attention_mask=kwargs['attention_mask']
+        self.chosen_sub_idx_list=kwargs['chosen_sub_idx']
+        self.sub_start_vec_list=kwargs['sub_start_vec']
+        self.sub_end_vec_list=kwargs['sub_end_vec']
+        self.obj_start_vec_list=kwargs['obj_start_vec']
+        self.obj_end_vec_list=kwargs['obj_end_vec']
 
     def __getitem__(self,index):
-        pass
+        return self.input_idx[index],self.attention_mask[index],self.chosen_sub_idx_list[index]\
+            ,self.sub_start_vec_list[index],self.sub_end_vec_list[index]\
+            ,self.obj_start_vec_list[index],self.obj_start_vec_list[index]
 
     def __len__(self):
-        return 0
+        return len(self.input_idx)
 
 
 def create_HBT_DataLoader(mode,data_dir,tokenizer):
     assert mode in ['train','dev','test']
     processor=HBTDataProcesser()
     if mode=='train':
-        text,triple_list=processor.get_train_units(data_dir)
+        text,subject_lists,triple_list=processor.get_train_units(data_dir)
     elif mode=='dev':
-        text,triple_list=processor.get_dev_units(data_dir)
+        text,subject_lists,triple_list=processor.get_dev_units(data_dir)
     else:
-        text,triple_list=processor.get_test_units(data_dir)
-
+        text,subject_lists,triple_list=processor.get_test_units(data_dir)
+    relation_list=processor.get_labels(data_dir)
     
+    data=processor.convert_units_to_features(text,triple_list,subject_lists,relation_list,tokenizer)
+    # import pdb
+    # pdb.set_trace()
+    dataset=HBTDataSet(**data)
+    dataloader=DataLoader(dataset,batch_size=HBTTrainingConfig.batch_size,shuffle=True,collate_fn=collate_fn)
+
+    return dataloader
+
+
+def test_dataloader(data_dir,tokenizer,create_dataloader):
+    dataloader=create_dataloader('train',data_dir,tokenizer)
+    print('test finish')
+    for data in dataloader:
+        import pdb
+        pdb.set_trace()
+
+
 
     
 if __name__=='__main__':
-    data_dir=args.MRC_SOURCE_DATA
-    tokenizer=create_Bert_tokenizer()
-    trainLoader=create_MRC_DataLoader('train',data_dir,tokenizer)
-    print('test finish')
-    # for data in trainLoader:
-    #     # import pdb
-    #     # pdb.set_trace()
-    #     inputs_ids,attention_mask,token_type_ids,tag_list=data
-        
+    path=os.path.join(args.HBT_SOURCE_DATA,'triple')
+    test_dataloader(path,create_Bert_tokenizer(True,model='bert-base-uncased'),create_HBT_DataLoader)

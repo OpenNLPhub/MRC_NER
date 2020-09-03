@@ -13,8 +13,9 @@ from collections import Counter
 from tqdm import tqdm
 import operator
 import src.config.args as args
-from src.utils.common import overrides
+from src.utils.common import overrides,is_number
 import json
+import numpy as np
 def line2char(line):
     '''
     :param line: 原始行 字:label
@@ -507,32 +508,144 @@ class HBTDataProcesser(DataProcessor):
     def __read_line__(self,input_file):
         batch_text=[]
         batch_triple_list=[]
+        batch_subjects=[]
         with open(input_file,'r') as f:
-            data=json.loads(f)
+            data=json.loads(f.read())
             for d in data:
                 text = d['text']
                 triple_list = d['triple_list']
-                text = ' '.join(text.split())
+                text =' '.join(text.split())
+
                 sub2triple={}
                 for triple in triple_list:
                     s,r,o = triple
+                    s=' '.join(s.split())
+                    o=' '.join(o.split())
                     if s not in sub2triple:
-                        sub2triple['s'] = [ ]
-                    sub2triple['s'].append((s,r,o))
+                        sub2triple[s] = [ ]
+                    sub2triple[s].append((s,r,o))
                 
                 #keep only one subject in one sentence
                 s = random.choice(list(sub2triple.keys()))
                 triple_list = sub2triple.get(s)
 
+                batch_subjects.append(list(sub2triple.keys()))
                 batch_text.append(text)
                 batch_triple_list.append(triple_list)
         assert len(batch_text) == len(batch_triple_list)
-        return batch_text,batch_triple_list
+        return batch_text,batch_subjects,batch_triple_list
+    
+    
+
+    @classmethod
+    def convert_units_to_features(cls,text,triples,subject_lists,relation_list,tokenizer):
+        rel2id={ rel:i for i,rel in enumerate(relation_list)}
+        rel_nums=len(relation_list)
+
+        inputs=tokenizer(text,padding=True)
+
+        input_ids=inputs['input_ids']
+        attention_mask=inputs['attention_mask']
+        max_len=len(input_ids[0])
+
+        batch_chosen_sub_idx=[]
+        batch_sub_start_vec=[]
+        batch_sub_end_vec=[]
+        batch_obj_start_vec=[]
+        batch_obj_end_vec=[]
+
+        # import pdb
+        # pdb.set_trace()
+        for ix in range(0,len(text)):
+            input_ids_ix=input_ids[ix]
+            #List[int]
+            
+            subject_list=subject_lists[ix]
+            triple_list=triples[ix]
+            
+            sub_start_vec,sub_end_vec=np.zeros(max_len),np.zeros(max_len)
+            for s in subject_list:
+                s=tokenizer.encode(s,add_special_tokens=False)
+                sub_start_idx,sub_end_idx=cls.find_head_index(text=input_ids_ix,sub=s)
+                sub_start_vec[sub_start_idx]=1.
+                sub_end_vec[sub_end_idx]=1.
+            
+            chosen_subject=triple_list[0][0]
+            chosen_subject=tokenizer.encode(chosen_subject,add_special_tokens=False)
+            chosen_sub_start_idx,chosen_sub_end_idx=cls.find_head_index(text=input_ids_ix,sub=chosen_subject)
+            
+            #obj [rel_nums,max_len]
+            obj_start_vec,obj_end_vec=np.zeros((rel_nums,max_len)),np.zeros((rel_nums,max_len))   
+            for triple in triple_list:
+                _,r,o=triple
+                r_id=rel2id.get(r)
+                o=tokenizer.encode(o,add_special_tokens=False)
+                obj_start_idx,obj_end_idx=cls.find_head_index(text=input_ids_ix,sub=o)
+                obj_start_vec[r_id][obj_start_idx]=1.
+                obj_end_vec[r_id][obj_end_idx]=1.
+            
+            batch_chosen_sub_idx.append((chosen_sub_start_idx,chosen_sub_end_idx))
+            batch_sub_start_vec.append(sub_start_vec)
+            batch_sub_end_vec.append(sub_end_vec)
+            batch_obj_start_vec.append(obj_start_vec)
+            batch_obj_end_vec.append(obj_end_vec)
+        
+        '''
+        Return:
+            input_ids,attention_mask: batch_size * max_len_seq
+            batch_chosen_sub_idx : batch_size List
+            batch_sub_start_vec,batch_sub_end_vec: batch_size * max_len_seq
+            batch_obj_start_vec,batch_obj_end_vec: batch_size * rel_num * max_len_seq
+        '''
+        return {\
+            "input_idx" : input_ids,
+            "attention_mask" : attention_mask,\
+            "chosen_sub_idx" : batch_chosen_sub_idx,\
+            "sub_start_vec" : batch_sub_start_vec,\
+            "sub_end_vec" : batch_sub_end_vec,\
+            "obj_start_vec" : batch_obj_start_vec,\
+            "obj_end_vec" : batch_obj_end_vec \
+                }
+        
     
     @classmethod
-    def convert_units_to_features(cls,text,triples,relation_list,tokenizer):
-        rel2id={ rel:i for i,rel in relation_list}
-        inputs=tokenizer(text,padding=True)
+    def find_head_index(cls,text:list,sub:list):
+        '''
+        text:List[int]
+        sub:List[int]
+        '''
+        #check type 
+        if  not (text and sub and isinstance(text[0],int) and isinstance(sub[0],int)):
+            raise ValueError('Need text List[int] and sub List[int] check your input type')
+
+        text_str=' '.join([ str(i) for i in text])
+        sub_str=' '.join(str(i) for i in sub)
+        idx=text_str.find(sub_str)
+        
+        assert idx!=-1
+
+        idx_start=0
+        for i,v in enumerate(text_str):
+            if i==idx:
+                break;
+            if v==' ':
+                idx_start+=1
+        
+        idx_end=idx_start-1+len(sub)
+
+        return idx_start,idx_end
+
+            
+
+        
+
+
+
+
+
+
+
+
     
 
 
