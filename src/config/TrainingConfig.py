@@ -12,3 +12,9 @@ class BertMRCTrainingConfig(TrainingConfig):
 
 class TransformerConfig(TrainingConfig):
     pass
+
+
+class HBTTrainingConfig(TrainingConfig):
+    batch_size=32
+    lr=1e-5
+    
