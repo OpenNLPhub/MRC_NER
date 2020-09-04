@@ -10,8 +10,9 @@ Bert_Pretrained_Model_Map = {
     'bert-base-uncased': BERT_BASE_ENGLISH,
     'bert-base-chinese': BERT_BASE_CHINESE
 }
+
 #可以在这里设定自己定义的BertConfig
-class BertConfig():
+class OwnBertConfig():
     hidden_size=0
     emb_size=0
     vocab_size=0
