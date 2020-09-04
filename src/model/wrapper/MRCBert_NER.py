@@ -4,7 +4,7 @@ import torch.optim as optim
 import src.config.args as args
 from src.model.wrapper.BaseWrapper import BaseWrapper
 from src.model.nn.MRCBert import MRCBert
-from src.config.ModelConfig import BertConfig
+from src.config.ModelConfig import OwnBertConfig
 from src.utils.common import overrides,flatten_lists
 from src.metrics.metrics import Eval_Unit,confusion_matrix_to_units
 from src.config.TrainingConfig import BertMRCTrainingConfig
@@ -15,8 +15,8 @@ class MRCBert_NER(BaseWrapper):
         if use_pretrained:
             self.model=MRCBert(num_labels=num_labels)
         else:
-            self.model=MRCBert(num_labels=num_labels,vocab_size=BertConfig.vocab_size,\
-                hidden_size=BertConfig.hidden_size,emb_size=BertConfig.emb_size,use_pretrained=False)
+            self.model=MRCBert(num_labels=num_labels,vocab_size=OwnBertConfig.vocab_size,\
+                hidden_size=OwnBertConfig.hidden_size,emb_size=OwnBertConfig.emb_size,use_pretrained=False)
 
         self.model.to(self.device)
         '''
@@ -28,7 +28,7 @@ class MRCBert_NER(BaseWrapper):
         self.optimizer=optim.Adam(self.model.parameters(),lr=self.lr)
     
 
-    def __trans_data2tensor(self,batch_data):
+    def _trans_data2tensor(self,batch_data):
         input_ids,attention_mask,token_type_ids,tags_lists=batch_data
         # transform data to tensor
         input_ids=torch.from_numpy(np.array(input_ids)).long().to(self.device)
@@ -44,7 +44,7 @@ class MRCBert_NER(BaseWrapper):
         labels2id={i:j for j,i in enumerate(labels)}
         if tokenizer==None or labels==None:
             raise ValueError('Need tokenizer and label_class')
-        input_ids,attention_mask,token_type_ids,tags=self.__trans_data2tensor(batch_data)
+        input_ids,attention_mask,token_type_ids,tags=self._trans_data2tensor(batch_data)
         score=self.model(input_ids=input_ids,attention_mask=attention_mask,token_type_ids=token_type_ids,\
             berttokenizer=tokenizer)
         # 将 'O' 的weight降低
@@ -67,7 +67,7 @@ class MRCBert_NER(BaseWrapper):
         total_step=test_data_loader.dataset.__len__()//self.batch_size +1
         with torch.no_grad():
             for step,batch_data in enumerate(test_data_loader):
-                input_ids,attention_mask,token_type_ids,tags=self.__trans_data2tensor(batch_data)
+                input_ids,attention_mask,token_type_ids,tags=self._trans_data2tensor(batch_data)
                 pred=self.best_model.predict(input_ids=input_ids,attention_mask=attention_mask,\
                     token_type_ids=token_type_ids,berttokenizer=tokenizer)
                 
@@ -88,7 +88,7 @@ class MRCBert_NER(BaseWrapper):
             raise ValueError('Need tokenizer and label_class')
         ids2labels={i:label for i,label in enumerate(labels)}
         
-        input_ids,attention_mask,token_type_ids,tags=self.__trans_data2tensor(batch_data)
+        input_ids,attention_mask,token_type_ids,tags=self._trans_data2tensor(batch_data)
         pred=self.best_model.predict(input_ids=input_ids,attention_mask=attention_mask,\
             token_type_ids=token_type_ids,berttokenizer=tokenizer)
         #如果在cuda上运算，要将cuda上的结果转化到cpu上才能用sklearn计算混淆矩阵
