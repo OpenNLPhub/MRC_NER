@@ -13,7 +13,7 @@ from collections import Counter
 from tqdm import tqdm
 import operator
 import src.config.args as args
-from src.utils.common import overrides,is_number
+from src.utils.common import overrides
 import json
 import numpy as np
 def line2char(line):
