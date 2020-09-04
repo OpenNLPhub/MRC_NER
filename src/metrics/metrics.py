@@ -55,17 +55,28 @@ class Eval_Unit(object):
 生成器
 '''
 
-def confusion_matrix_to_units(pred,tag,ids2labels):
+def confusion_matrix_to_units(pred,tag,ids2labels,binary=False):
     classes=list(ids2labels.keys())
     matrix=confusion_matrix(pred,tag,classes)
     TP=np.diag(matrix)
     FP=matrix.sum(axis=1)-TP
     FN=matrix.sum(axis=0)-TP
     TN=matrix.sum()-TP-FN-FP
-    units=[]
-    for i,cla in ids2labels.items():
-        units.append(Eval_Unit(TP[i],FP[i],FN[i],TN[i],cla))
-    return units
+    if binary:
+        #细化函数功能，二分类[0,1] 看1的标签
+       index=classes.index(1)
+       return Eval_Unit(TP[index],FP[index],FN[index],TN[index],ids2labels[1])
+    else:
+        units=[]
+        for i,ids in enumerate(classes):
+            cla=ids2labels.get(ids)
+            units.append(Eval_Unit(TP[i],FP[i],FN[i],TN[i],cla))
+        return units
+    
+    
+
+
+        
 
 
 
