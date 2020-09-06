@@ -11,11 +11,11 @@ import numpy as np
 from src.metrics.metrics import confusion_matrix_to_units
 
 class hbtModel(BaseWrapper):
-    def __init__(self,relation_list,bert):
+    def __init__(self,relation_list,use_pretrained=True,**kwargs):
         super(hbtModel,self).__init__()
         self.relation_list=relation_list
-        self.model=HBT(bert,len(relation_list))
-        
+        self.bert=create_bert_encoder(use_pretrained=True,**kwargs)
+        self.model=HBT(len(relation_list),self.bert)
         self.model.to(self.device)
 
         '''
