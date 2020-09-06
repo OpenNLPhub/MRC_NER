@@ -35,7 +35,7 @@ def run_Bert_MRC_NER():
     df.to_csv(args.MRC_RESULT_PATH)
 
 def run_HBT():
-    model_is_existed=os.path.exist(args.HBT_MODEL_PATH)
+    model_is_existed=os.path.exists(args.HBT_MODEL_PATH)
     path=os.path.join(args.HBT_SOURCE_DATA,'triple')
     tokenizer=create_Bert_tokenizer(True,model='bert-base-uncased')
     if not model_is_existed:
@@ -45,7 +45,7 @@ def run_HBT():
         with open(os.path.join(path,'relation_type.txt'),'r') as f:
             for line in f.readlines():
                 relation_list.append(line.strip()) 
-        model=hbtModel(len(relation_list,use_pretrained=True,model='vert-base-uncased'))
+        model=hbtModel(len(relation_list),use_pretrained=True,model='vert-base-uncased')
         model.train(train_data_loader,dev_data_loader)
         save_model(model,args.HBT_MODEL_PATH)
     else:
