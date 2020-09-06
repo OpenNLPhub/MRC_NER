@@ -509,7 +509,7 @@ class HBTDataProcesser(DataProcessor):
         batch_text=[]
         batch_triple_list=[]
         batch_subjects=[]
-        with open(input_file,'r',encode='utf-8') as f:
+        with open(input_file,'r',encoding='utf-8') as f:
             data=json.loads(f.read())
             for d in data:
                 text = d['text']
