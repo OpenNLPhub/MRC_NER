@@ -500,7 +500,7 @@ class HBTDataProcesser(DataProcessor):
     @overrides(DataProcessor)
     def get_labels(self,data_dir):
         relation_list=[]
-        with open ( os.path.join(data_dir,HBTDataProcesser.label),'r') as f:
+        with open (os.path.join(data_dir,HBTDataProcesser.label),'r') as f:
              for line in f.readlines():
                  relation_list.append(line.strip())
         return relation_list
@@ -509,7 +509,7 @@ class HBTDataProcesser(DataProcessor):
         batch_text=[]
         batch_triple_list=[]
         batch_subjects=[]
-        with open(input_file,'r') as f:
+        with open(input_file,'r',encode='utf-8') as f:
             data=json.loads(f.read())
             for d in data:
                 text = d['text']
