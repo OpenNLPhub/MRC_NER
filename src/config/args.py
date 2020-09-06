@@ -25,8 +25,9 @@ HBT_SOURCE_DATA=join(cwd,'data','WebNLG')
 ''' ----  model parameter path ----'''
 
 MRC_MODEL_PATH=join(cwd,'data','model','mrc.pkl')
-
+HBT_MODEL_PATH=join(cwd,'data','model','hbt.pkl')
 
 
 '''  ---- output result path ---- '''
 MRC_RESULT_PATH=join(cwd,'data','output','mrc.csv')
+HBT_RESULT_PATH=join(cwd,'data','output','hbt.csv')
