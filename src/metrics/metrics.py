@@ -56,6 +56,7 @@ class Eval_Unit(object):
 '''
 
 def confusion_matrix_to_units(pred,tag,ids2labels,binary=False):
+    # import pdb; pdb.set_trace()
     classes=list(ids2labels.keys())
     matrix=confusion_matrix(pred,tag,classes)
     TP=np.diag(matrix)
@@ -74,10 +75,6 @@ def confusion_matrix_to_units(pred,tag,ids2labels,binary=False):
         return units
     
     
-
-
-        
-
 
 
 '''

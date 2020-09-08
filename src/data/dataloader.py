@@ -128,20 +128,20 @@ def create_HBT_DataLoader(mode,data_dir,tokenizer):
     # pdb.set_trace()
     dataset=HBTDataSet(**data)
     dataloader=DataLoader(dataset,batch_size=HBTTrainingConfig.batch_size,shuffle=True,collate_fn=collate_fn)
-
     return dataloader
 
 
-def test_dataloader(data_dir,tokenizer,create_dataloader):
-    dataloader=create_dataloader('train',data_dir,tokenizer)
+def test_dataloader(data_dir,tokenizer,create_dataloader,mode):
+    assert mode in ['train','dev','test']
+    # import pdb
+    # pdb.set_trace()
+    dataloader=create_dataloader(mode,data_dir,tokenizer)
     print('test finish')
     for data in dataloader:
         import pdb
         pdb.set_trace()
 
-
-
     
 if __name__=='__main__':
     path=os.path.join(args.HBT_SOURCE_DATA,'triple')
-    test_dataloader(path,create_Bert_tokenizer(True,model='bert-base-uncased'),create_HBT_DataLoader)
+    test_dataloader(path,create_Bert_tokenizer(True,model='bert-base-uncased'),create_HBT_DataLoader,mode='dev')

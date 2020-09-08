@@ -37,7 +37,7 @@ class BaseWrapper(object):
             #理论上来说，在训练了一个epoch之后，如果模型进行了学习，best_model肯定会进行更新
             if e==0:
                 self.best_model=self.model
-            
+
             val_loss=self.validate(dev_data_loader,**kwargs)
             print("Validation:\t Epoch {}, Val Loss:{:.4f}".format(e+1,val_loss))
                 
@@ -49,13 +49,14 @@ class BaseWrapper(object):
             ans=None
             for data in dev_data_loader:
                 val_step+=1
-                loss=self._cal_loss(data,**kwargs)
+                _data=list(data)
+                loss=self._cal_loss(_data,**kwargs)
                 loss=loss.item()
                 val_losses+=loss
                 #return的 loss 不需要backward() 取了item
         
                 #计算eval unit
-                units=self._eval_unit(data,**kwargs)
+                units=self._eval_unit(_data,**kwargs)
                 ans=[i+j for i,j in zip(ans,units)] if ans!=None else units
                 
         val_loss=val_losses/val_step

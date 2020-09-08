@@ -17,19 +17,19 @@ def check_units(t,data):
     max_len=-1
     for i,d in tqdm(enumerate(data)):
         text=d['text']
-        max_len=len(text) if len(text)>max_len else max_len
-        length.append(len(text))
+        max_len=len(text.split()) if len(text.split())>max_len else max_len
+        length.append(len(text.split()))
         for s,r,o in d['triple_list']:
             if label_type.get(r) == None:
                 label_type[r]=1
-    print('check {} data, {} items in data , max len sentence is {}\the average text length:{}\tthe num of relation type {}'\
+    print('check {} data, {} items in data , max len sentence is {}\t the average text length:{}\tthe num of relation type {}'\
             .format(t,n,max_len,float(sum(length))/n,len(list(label_type.keys()))))
     return list(label_type.keys())
 
 def check_dataset(dir:str):
-    with open(os.path.join(dir,'triple','train.json'),'r') as train_f,\
-         open(os.path.join(dir,'triple','test.json'),'r') as test_f,\
-         open(os.path.join(dir,'triple','dev.json'),'r') as dev_f:
+    with open(os.path.join(dir,'train.json'),'r') as train_f,\
+         open(os.path.join(dir,'test.json'),'r') as test_f,\
+         open(os.path.join(dir,'dev.json'),'r') as dev_f:
          train_data=json.loads(train_f.read())
          dev_data=json.loads(dev_f.read())
          test_data=json.loads(test_f.read())
@@ -61,7 +61,7 @@ def check_dataset(dir:str):
 
     
 def build_relation_list(dir:str):
-    with open(os.path.join(dir,'triple','train.json'),'r') as train_f:
+    with open(os.path.join(dir,'train.json'),'r') as train_f:
         rel_type={}
         train_data=json.loads(train_f.read())
         for i,d in tqdm(enumerate(train_data)):
@@ -81,5 +81,5 @@ def build_relation_list(dir:str):
 
 
 if __name__=='__main__':
-    check_dataset(args.HBT_SOURCE_DATA)
+    check_dataset(os.path.join(args.HBT_SOURCE_DATA,'triple'))
     build_relation_list(os.path.join(args.HBT_SOURCE_DATA,'triple'))

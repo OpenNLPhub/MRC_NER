@@ -541,7 +541,7 @@ class HBTDataProcesser(DataProcessor):
     def convert_units_to_features(cls,text,triples,subject_lists,relation_list,tokenizer):
         rel2id={ rel:i for i,rel in enumerate(relation_list)}
         rel_nums=len(relation_list)
-
+        # import pdb;pdb.set_trace()
         inputs=tokenizer(text,padding=True)
 
         input_ids=inputs['input_ids']
@@ -575,14 +575,15 @@ class HBTDataProcesser(DataProcessor):
             chosen_sub_start_idx,chosen_sub_end_idx=cls.find_head_index(text=input_ids_ix,sub=chosen_subject)
             
             #obj [rel_nums,max_len]
-            obj_start_vec,obj_end_vec=np.zeros((rel_nums,max_len)),np.zeros((rel_nums,max_len))   
+            obj_start_vec,obj_end_vec=np.zeros((max_len,rel_nums)),np.zeros((max_len,rel_nums))   
+            
             for triple in triple_list:
                 _,r,o=triple
                 r_id=rel2id.get(r)
                 o=tokenizer.encode(o,add_special_tokens=False)
                 obj_start_idx,obj_end_idx=cls.find_head_index(text=input_ids_ix,sub=o)
-                obj_start_vec[r_id][obj_start_idx]=1.
-                obj_end_vec[r_id][obj_end_idx]=1.
+                obj_start_vec[obj_start_idx][r_id]=1.
+                obj_end_vec[obj_end_idx][r_id]=1.
             
             batch_chosen_sub_idx.append((chosen_sub_start_idx,chosen_sub_end_idx))
             batch_sub_start_vec.append(sub_start_vec)
@@ -645,8 +646,6 @@ class HBTDataProcesser(DataProcessor):
 
 
 
-
-    
 
 
 

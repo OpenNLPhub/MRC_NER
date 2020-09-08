@@ -45,11 +45,11 @@ def run_HBT():
         with open(os.path.join(path,'relation_type.txt'),'r') as f:
             for line in f.readlines():
                 relation_list.append(line.strip()) 
-        model=hbtModel(len(relation_list),use_pretrained=True,model='vert-base-uncased')
+        model=hbtModel(relation_list,use_pretrained=True,model='bert-base-uncased')
         model.train(train_data_loader,dev_data_loader)
         save_model(model,args.HBT_MODEL_PATH)
     else:
-        model=load_model(args.MRC_MODEL_PATH)
+        model=load_model(args.HBT_MODEL_PATH)
     test_data_loader=create_HBT_DataLoader('test',path,tokenizer)
     units=model.test(test_data_loader,tokenizer=tokenizer)
     df=convert_units_to_dataframe(units)

@@ -17,4 +17,5 @@ class TransformerConfig(TrainingConfig):
 class HBTTrainingConfig(TrainingConfig):
     batch_size=32
     lr=1e-5
+    epoch=20
     
